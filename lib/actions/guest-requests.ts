@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { processImage } from '@/lib/image'
+import { notifyAdminNewRequest } from '@/lib/send-admin-notification'
 
 export async function createExchangeRequest(formData: FormData) {
     const recipientName = (formData.get('recipient_name') as string)?.trim()
@@ -20,7 +21,7 @@ export async function createExchangeRequest(formData: FormData) {
     if (!phoneRegex.test(phone)) {
         return { error: '전화번호 형식이 올바르지 않습니다.' }
     }
-    
+
     if (!recipientName || !phone || !addressZonecode || !addressRoad || !password) {
         return { error: '필수 항목을 모두 입력해주세요.' }
     }
@@ -91,6 +92,13 @@ export async function createExchangeRequest(formData: FormData) {
     }
 
     await supabaseAdmin.from('status_history').insert({ request_id: request.id, status: 'requested' })
+
+    await notifyAdminNewRequest({
+        requestId: request.id,
+        recipientName,
+        phone,
+        items: items.map((i) => ({ name: i.name, quantity: i.quantity })),
+    })
 
     return { success: true, requestId: request.id }
 }
