@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { trackRequests } from '@/lib/actions/guest-track'
 import { STATUS_LABELS, DELIVERY_TYPE_LABELS } from '@/lib/status-labels'
 import StatusTimeline from '@/components/StatusTimeline'
+import CopyableText from '@/components/CopyableText'
 
 type RequestItem = { item_name_snapshot: string; quantity: number }
 type RequestResult = {
@@ -93,10 +94,13 @@ export default function TrackForm() {
                             )}
 
                             {(req.status === 'shipping' || req.status === 'completed') && req.delivery_type && (
-                                <div className="mt-4 p-3 rounded-xl bg-surface-100 text-sm text-ink-600 space-y-0.5">
+                                <div className="mt-4 p-3 rounded-xl bg-surface-100 text-sm text-ink-600 space-y-1">
                                     <p>배송 방법: {DELIVERY_TYPE_LABELS[req.delivery_type]}</p>
                                     {req.delivery_type === 'parcel' && req.tracking_number && (
-                                        <p>{req.courier_name} · {req.tracking_number}</p>
+                                        <div className="flex items-center gap-1">
+                                            <span>{req.courier_name} ·</span>
+                                            <CopyableText text={req.tracking_number} className="font-medium text-ink-900" />
+                                        </div>
                                     )}
                                 </div>
                             )}

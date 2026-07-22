@@ -1,67 +1,93 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import RequestsFilter from './RequestsFilter'
-import ExportPanel from './ExportPanel'
-import { STATUS_LABELS, STATUS_COLORS } from '@/lib/status-labels'
+import RequestsList from './RequestsList'
+import Pagination from './Pagination'
+
+type SearchParams = {
+    status?: string
+    from?: string
+    to?: string
+    searchType?: string
+    q?: string
+    pageSize?: string
+    page?: string
+}
 
 export default async function RequestsPage({
     searchParams,
 }: {
-    searchParams: Promise<{ status?: string; q?: string }>
+    searchParams: Promise<SearchParams>
 }) {
-    const { status, q } = await searchParams
+    const sp = await searchParams
+    const status = sp.status ?? 'all'
+    const from = sp.from ?? ''
+    const to = sp.to ?? ''
+    const searchType = sp.searchType ?? 'name'
+    const q = sp.q ?? ''
+    const pageSize = Number(sp.pageSize ?? 20)
+    const page = Number(sp.page ?? 1)
+
     const supabase = await createClient()
+
+    // 품목명 검색은 join 테이블을 먼저 조회해서 request_id 목록을 뽑아야 함
+    let itemMatchedIds: string[] | null = null
+    if (searchType === 'item' && q) {
+        const { data: matched } = await supabase
+            .from('exchange_request_items')
+            .select('request_id')
+            .ilike('item_name_snapshot', `%${q}%`)
+        itemMatchedIds = Array.from(new Set((matched ?? []).map((m) => m.request_id)))
+        if (itemMatchedIds.length === 0) itemMatchedIds = ['00000000-0000-0000-0000-000000000000']
+    }
 
     let query = supabase
         .from('exchange_requests')
-        .select('id, recipient_name, phone, status, created_at, exchange_request_items ( item_name_snapshot, quantity )')
+        .select(
+            'id, recipient_name, phone, status, created_at, exchange_request_items ( item_name_snapshot, quantity )',
+            { count: 'exact' }
+        )
         .order('created_at', { ascending: false })
-        .limit(200)
 
-    if (status && status !== 'all') query = query.eq('status', status)
-    if (q) query = query.ilike('recipient_name', `%${q}%`)
+    if (status !== 'all') query = query.eq('status', status)
+    if (from) query = query.gte('created_at', from)
+    if (to) query = query.lte('created_at', `${to}T23:59:59`)
+    if (searchType === 'name' && q) query = query.ilike('recipient_name', `%${q}%`)
+    if (searchType === 'phone' && q) query = query.ilike('phone', `%${q}%`)
+    if (itemMatchedIds) query = query.in('id', itemMatchedIds)
 
-    const { data: requests } = await query
+    const rangeFrom = (page - 1) * pageSize
+    const rangeTo = rangeFrom + pageSize - 1
+    query = query.range(rangeFrom, rangeTo)
+
+    const { data: requests, count } = await query
+    const totalCount = count ?? 0
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
 
     return (
         <div>
             <div className="flex justify-between items-center mb-5">
                 <h1 className="text-lg font-bold text-ink-900">교환 신청 목록</h1>
-                <Link href="/admin/templates" className="text-xs text-ink-400 hover:text-ink-600">엑셀 양식 관리</Link>
+                <Link href="/admin/templates" className="text-xs text-ink-400 hover:text-ink-600">
+                    엑셀 양식 관리
+                </Link>
             </div>
 
-            <RequestsFilter defaultStatus={status ?? 'all'} defaultQuery={q ?? ''} />
-            <ExportPanel status={status ?? 'all'} />
+            <RequestsFilter
+                key={`${status}-${from}-${to}-${searchType}-${q}-${pageSize}`}
+                defaultStatus={status}
+                defaultFrom={from}
+                defaultTo={to}
+                defaultSearchType={searchType}
+                defaultQuery={q}
+                defaultPageSize={pageSize}
+            />
 
-            <ul className="space-y-2 mt-4">
-                {requests?.map((req) => (
-                    <li key={req.id}>
-                        <Link
-                            href={`/admin/requests/${req.id}`}
-                            className="flex items-center gap-3 p-3.5 rounded-2xl border border-line-200 hover:border-ink-400/30 transition-colors duration-150"
-                        >
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-sm font-medium text-ink-900">{req.recipient_name}</span>
-                                    <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-medium ${STATUS_COLORS[req.status]}`}>
-                                        {STATUS_LABELS[req.status]}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-ink-400 truncate">
-                                    {req.exchange_request_items.map((i) => i.item_name_snapshot).join(', ')}
-                                </p>
-                            </div>
-                            <span className="text-xs text-ink-400 shrink-0">
-                                {new Date(req.created_at).toLocaleDateString('ko-KR')}
-                            </span>
-                        </Link>
-                    </li>
-                ))}
-            </ul>
+            <p className="text-xs text-ink-400 mt-3 mb-2">총 {totalCount}건</p>
 
-            {requests?.length === 0 && (
-                <p className="text-center text-sm text-ink-400 py-16">조건에 맞는 신청이 없어요</p>
-            )}
+            <RequestsList requests={requests ?? []} filters={{ status, from, to, searchType, q }} />
+
+            <Pagination currentPage={page} totalPages={totalPages} />
         </div>
     )
 }

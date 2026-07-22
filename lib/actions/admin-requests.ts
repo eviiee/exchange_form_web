@@ -197,3 +197,24 @@ export async function bulkUpdateDeliveryFromExcel(formData: FormData) {
     revalidatePath('/admin/requests')
     return { success: true, successCount, failCount }
 }
+
+export async function bulkUpdateStatus(ids: string[], status: string) {
+    if (ids.length === 0) return { error: '선택된 항목이 없습니다.' }
+
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const { error } = await supabase
+        .from('exchange_requests')
+        .update({ status, updated_at: new Date().toISOString() })
+        .in('id', ids)
+
+    if (error) return { error: '일괄 변경에 실패했습니다.' }
+
+    await supabase.from('status_history').insert(
+        ids.map((id) => ({ request_id: id, status, note: '목록에서 일괄 변경', changed_by: user?.id }))
+    )
+
+    revalidatePath('/admin/requests')
+    return { success: true }
+}

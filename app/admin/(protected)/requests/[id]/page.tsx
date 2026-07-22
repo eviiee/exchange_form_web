@@ -4,6 +4,7 @@ import { DELIVERY_TYPE_LABELS, STATUS_LABELS } from '@/lib/status-labels'
 import StatusActions from './StatusActions'
 import DeliveryForm from './DeliveryForm'
 import RejectModal from './RejectModal'
+import CopyableText from '@/components/CopyableText'
 
 export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -30,11 +31,18 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         <div className="space-y-6">
             <div>
                 <div className="flex items-center gap-2 mb-1">
-                    <h1 className="text-lg font-bold text-ink-900">{request.recipient_name}</h1>
+                    <CopyableText text={request.recipient_name} className="text-lg font-bold text-ink-900" />
                     <span className="text-xs text-ink-400">{new Date(request.created_at).toLocaleString('ko-KR')}</span>
                 </div>
-                <p className="text-sm text-ink-600">{request.phone}</p>
-                <p className="text-sm text-ink-600">({request.address_zonecode}) {request.address_road} {request.address_detail}</p>
+                <p>
+                    <CopyableText text={request.phone} className="text-sm text-ink-600" />
+                </p>
+                <p>
+                    <CopyableText
+                        text={`(${request.address_zonecode}) ${request.address_road} ${request.address_detail ?? ''}`.trim()}
+                        className="text-sm text-ink-600 text-left"
+                    />
+                </p>
             </div>
 
             <div>
