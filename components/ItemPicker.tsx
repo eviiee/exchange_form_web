@@ -43,7 +43,8 @@ export default function ItemPicker({
     onChange([...selected, { item_id: item.id, name: item.name, quantity: 1, image_path: item.image_path }])
     setQuery('')
     setHighlightedIndex(0)
-    inputRef.current?.focus()
+    setOpen(false)
+    inputRef.current?.blur()
   }
 
   const updateQuantity = (id: string, quantity: number) => {
@@ -105,9 +106,8 @@ export default function ItemPicker({
                     onMouseDown={(e) => e.preventDefault()} // blur보다 먼저 클릭 처리되도록
                     onClick={() => addItem(item)}
                     onMouseEnter={() => setHighlightedIndex(index)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors duration-100 text-left ${
-                      index === highlightedIndex ? 'bg-primary-light' : 'hover:bg-surface-100'
-                    }`}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors duration-100 text-left ${index === highlightedIndex ? 'bg-primary-light' : 'hover:bg-surface-100'
+                      }`}
                   >
                     <div className="w-9 h-9 relative bg-surface-100 rounded-lg overflow-hidden shrink-0">
                       {imageUrl(item.image_path) && (

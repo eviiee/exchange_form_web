@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import LogoutButton from './LogoutButton'
+import AdminNav from './AdminNav'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -20,7 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-10 border-b border-line-200 bg-white/80 backdrop-blur-sm">
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-line-200">
         <div className="max-w-[680px] mx-auto px-5 h-14 flex justify-between items-center">
           <span className="font-semibold text-ink-900">교환 신청 관리</span>
           <div className="flex items-center gap-3">
@@ -28,7 +29,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <LogoutButton />
           </div>
         </div>
-      </header>
+        <AdminNav />
+      </div>
       <main className="max-w-[680px] mx-auto px-5 py-6">{children}</main>
     </div>
   )
