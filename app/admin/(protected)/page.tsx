@@ -1,24 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
+
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
 
-  const { count: totalCount } = await supabase
-    .from('exchange_requests')
-    .select('*', { count: 'exact', head: true })
-
-  const { count: pendingCount } = await supabase
-    .from('exchange_requests')
-    .select('*', { count: 'exact', head: true })
-    .in('status', ['requested', 'preparing'])
-
-  const { data: pendingRequests } = await supabase
-    .from('exchange_requests')
-    .select('id')
-    .in('status', ['requested', 'preparing'])
+  const [{ count: totalCount }, { data: pendingRequests }] = await Promise.all([
+    supabase.from('exchange_requests').select('*', { count: 'exact', head: true }),
+    supabase.from('exchange_requests').select('id').in('status', ['requested', 'preparing']),
+  ])
 
   const pendingIds = (pendingRequests ?? []).map((r) => r.id)
+  const pendingCount = pendingIds.length
 
   let itemSummary: { name: string; quantity: number }[] = []
   if (pendingIds.length > 0) {
@@ -35,6 +28,8 @@ export default async function AdminDashboardPage() {
       .map(([name, quantity]) => ({ name, quantity }))
       .sort((a, b) => b.quantity - a.quantity)
   }
+
+  // 이후 JSX는 동일 (pendingCount 변수명도 그대로 재사용 가능)
 
   return (
     <div className="space-y-6">
